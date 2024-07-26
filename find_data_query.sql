@@ -1,7 +1,7 @@
 DECLARE @SearchStrTableName nvarchar(255), @SearchStrColumnName nvarchar(255), @SearchStrColumnValue1 nvarchar(255), @SearchStrColumnValue2 nvarchar(255), @SearchStrInXML bit, @FullRowResult bit, @FullRowResultRows int
 /* use LIKE Syntax */
 SET @SearchStrColumnValue1 = '%test_string%' /* first value to search for */
-SET @SearchStrColumnValue2 = '%test_string%' /* second value to search for, set NULL or empty if not used */
+SET @SearchStrColumnValue2 = NULL /* second value to search for, set NULL or empty if not used */
 SET @FullRowResult = 1
 SET @FullRowResultRows = 3
 SET @SearchStrTableName = NULL /* NULL for all tables, uses LIKE syntax */
