@@ -3,7 +3,7 @@ DECLARE @SearchStrTableName nvarchar(255), @SearchStrColumnName nvarchar(255), @
 SET @SearchStrColumnValue1 = '%test_string%' /* first value to search for */
 SET @SearchStrColumnValue2 = NULL /* second value to search for, set NULL or empty if not used */
 SET @FullRowResult = 1
-SET @FullRowResultRows = 3
+SET @FullRowResultRows = 10 /* Update this value if you want to show more rows*/
 SET @SearchStrTableName = NULL /* NULL for all tables, uses LIKE syntax */
 SET @SearchStrColumnName = NULL /* NULL for all columns, uses LIKE syntax */
 SET @SearchStrInXML = 0 /* Searching XML data may be slow */
