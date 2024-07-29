@@ -1,5 +1,5 @@
-DECLARE @SearchStrTableName nvarchar(255), @SearchStrColumnName nvarchar(255), @SearchStrColumnValue1 nvarchar(255), @SearchStrColumnValue2 nvarchar(255), @SearchStrInXML bit, @FullRowResult bit, @FullRowResultRows int
-/* use LIKE Syntax */
+DECLARE @SearchStrTableName nvarchar(255), @SearchStrColumnName nvarchar(255), @SearchStrColumnValue1 nvarchar(255), @SearchStrColumnValue2 nvarchar(255), @SearchStrInXML bit, @FullRowResult bit, @FullRowResultRows int, @SearchMode int
+/* use LIKE Syntax for SearchStrColumnValue1 and SearchStrColumnValue2 */
 SET @SearchStrColumnValue1 = '%test_string%' /* first value to search for */
 SET @SearchStrColumnValue2 = NULL /* second value to search for, set NULL or empty if not used */
 SET @FullRowResult = 1
@@ -7,6 +7,7 @@ SET @FullRowResultRows = 10 /* Update this value if you want to show more rows*/
 SET @SearchStrTableName = NULL /* NULL for all tables, uses LIKE syntax */
 SET @SearchStrColumnName = NULL /* NULL for all columns, uses LIKE syntax */
 SET @SearchStrInXML = 0 /* Searching XML data may be slow */
+SET @SearchMode = 0 /* 0 for AND (both values together), 1 for OR (either value) */
 
 IF OBJECT_ID('tempdb..#Results') IS NOT NULL DROP TABLE #Results
 CREATE TABLE #Results (TableName nvarchar(128), ColumnName nvarchar(128), ColumnValue nvarchar(max), ColumnType nvarchar(20))
@@ -45,7 +46,8 @@ BEGIN
 BEGIN
             PRINT @ColumnName
 SELECT TOP 1 @ColumnName = COLUMN_NAME, @ColumnType = DATA_TYPE FROM @ColumnNameTable
-    -- Build the search condition dynamically
+
+    -- Build the search condition dynamically based on @SearchMode
     SET @SearchCondition = CASE @ColumnType 
                                     WHEN 'xml' THEN 'CAST(' + @ColumnName + ' AS nvarchar(MAX))'
                                     WHEN 'timestamp' THEN 'master.dbo.fn_varbintohexstr('+ @ColumnName + ')'
@@ -53,13 +55,28 @@ SELECT TOP 1 @ColumnName = COLUMN_NAME, @ColumnType = DATA_TYPE FROM @ColumnName
 END + ' LIKE ' + @QuotedSearchStrColumnValue1
             IF @SearchStrColumnValue2 IS NOT NULL AND @SearchStrColumnValue2 <> ''
 BEGIN
-                SET @SearchCondition = @SearchCondition + ' OR ' + 
-                                        CASE @ColumnType 
-                                            WHEN 'xml' THEN 'CAST(' + @ColumnName + ' AS nvarchar(MAX))'
-                                            WHEN 'timestamp' THEN 'master.dbo.fn_varbintohexstr('+ @ColumnName + ')'
-                                            ELSE @ColumnName
+                IF @SearchMode = 0
+BEGIN
+                    -- AND logic: search for rows containing both values
+                    SET @SearchCondition = @SearchCondition + ' AND ' + 
+                                            CASE @ColumnType 
+                                                WHEN 'xml' THEN 'CAST(' + @ColumnName + ' AS nvarchar(MAX))'
+                                                WHEN 'timestamp' THEN 'master.dbo.fn_varbintohexstr('+ @ColumnName + ')'
+                                                ELSE @ColumnName
 END + ' LIKE ' + @QuotedSearchStrColumnValue2
 END
+ELSE
+BEGIN
+                    -- OR logic: search for rows containing either value
+                    SET @SearchCondition = @SearchCondition + ' OR ' + 
+                                            CASE @ColumnType 
+                                                WHEN 'xml' THEN 'CAST(' + @ColumnName + ' AS nvarchar(MAX))'
+                                                WHEN 'timestamp' THEN 'master.dbo.fn_varbintohexstr('+ @ColumnName + ')'
+                                                ELSE @ColumnName
+END + ' LIKE ' + @QuotedSearchStrColumnValue2
+END
+END
+
             SET @sql = 'SELECT ''' + @TableName + ''',''' + @ColumnName + ''',' + 
                        CASE @ColumnType WHEN 'xml' THEN 'LEFT(CAST(' + @ColumnName + ' AS nvarchar(MAX)), 4096),''' 
                        WHEN 'timestamp' THEN 'master.dbo.fn_varbintohexstr('+ @ColumnName + '),'''
